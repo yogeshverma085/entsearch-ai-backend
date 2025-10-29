@@ -1,0 +1,27 @@
+{
+  "name": "ai",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@azure/openai": "^2.0.0",
+    "@azure/search-documents": "^12.1.0",
+    "axios": "^1.12.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "mammoth": "^1.11.0",
+    "openai": "^6.7.0",
+    "pdf-parse": "^2.2.1",
+    "selfsigned": "^3.0.1",
+    "xlsx": "^0.18.5",
+    "yahoo-finance2": "^3.10.0"
+  }
+}
