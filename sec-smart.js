@@ -124,18 +124,94 @@ async function fetchLatestFilingsByForm(formFilter, limit = 10) {
 
 // AI summarization with structured JSON output
 
-async function askAIAboutFilings(filings, query) {
-  if (!filings || filings.length === 0) {
-    return [];
-  }
+// async function askAIAboutFilings(filings, query) {
+//   if (!filings || filings.length === 0) {
+//     return [];
+//   }
 
-  const BATCH_SIZE = 2; // small batch to avoid token overflow
-  const allSummaries = [];
+//   const BATCH_SIZE = 2; // small batch to avoid token overflow
+//   const allSummaries = [];
+
+//   for (let i = 0; i < filings.length; i += BATCH_SIZE) {
+//     const batch = filings.slice(i, i + BATCH_SIZE);
+
+//     // Prepare SEC filings text for this batch
+//     const filingsText = batch
+//       .map(
+//         (f) =>
+//           `Company: ${f.companyName}, Ticker: ${f.ticker}, Form: ${f.form}, Date: ${f.filingDate}, Accession: ${f.accessionNumber}`
+//       )
+//       .join("\n");
+
+//     // Prompt AI to return structured JSON
+//     const prompt = `
+// You are a financial assistant AI.
+// Use ONLY the following SEC filings data to answer the user's question.
+
+// SEC Filings:
+// ${filingsText}
+
+// User Question: ${query}
+
+// Return the answer as a JSON array. Each object should have the following structure:
+// {
+//   "companyName": "Company Name",
+//   "ticker": "Ticker Symbol",
+//   "form": "Form Type",
+//   "filingDate": "YYYY-MM-DD",
+//   "accessionNumber": "Accession Number",
+//   "summary": "Brief summary of the filing",
+//   "financials": {
+//      "revenue": "$...",
+//      "netIncome": "$..."
+//   },
+//   "keyInitiatives": ["Initiative 1", "Initiative 2", "..."]
+// }
+
+// Return ONLY valid JSON. Do NOT include markdown code blocks.
+// Escape all quotes and special characters properly.
+// Keep "summary" max 100 words, "keyInitiatives" max 5 items.
+// `;
+
+//     // Call Azure OpenAI
+//     const completion = await openaiClient.chat.completions.create({
+//       model: process.env.AZURE_OPENAI_DEPLOYMENT,
+//       messages: [{ role: "user", content: prompt }],
+//       max_tokens: 2000, // safely increased for batch
+//       temperature: 0.2,
+//     });
+
+//     // Parse JSON response
+//     let rawContent = completion.choices[0].message.content.trim();
+//     rawContent = rawContent.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/```$/, "");
+
+//     try {
+//       const parsed = JSON.parse(rawContent);
+//       allSummaries.push(...parsed);
+//     } catch (err) {
+//       // fallback: remove trailing commas and try again
+//       const cleaned = rawContent.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}");
+//       try {
+//         const parsed = JSON.parse(cleaned);
+//         allSummaries.push(...parsed);
+//       } catch (err2) {
+//         console.error("Failed to parse AI JSON for this batch:", err2.message);
+//       }
+//     }
+//   }
+
+//   return allSummaries;
+// }
+
+async function askAIAboutFilings(filings, query) {
+  if (!filings || filings.length === 0) return [];
+
+  const BATCH_SIZE = 2;
+  let allSummaries = [];
 
   for (let i = 0; i < filings.length; i += BATCH_SIZE) {
     const batch = filings.slice(i, i + BATCH_SIZE);
 
-    // Prepare SEC filings text for this batch
     const filingsText = batch
       .map(
         (f) =>
@@ -143,65 +219,58 @@ async function askAIAboutFilings(filings, query) {
       )
       .join("\n");
 
-    // Prompt AI to return structured JSON
+    // ✨ Updated Prompt for Structured, Readable Format
     const prompt = `
-You are a financial assistant AI.
-Use ONLY the following SEC filings data to answer the user's question.
+You are a financial assistant AI. 
+Use the following SEC filings data to provide a **well-formatted summary** for the user's question.
 
 SEC Filings:
 ${filingsText}
 
 User Question: ${query}
 
-Return the answer as a JSON array. Each object should have the following structure:
-{
-  "companyName": "Company Name",
-  "ticker": "Ticker Symbol",
-  "form": "Form Type",
-  "filingDate": "YYYY-MM-DD",
-  "accessionNumber": "Accession Number",
-  "summary": "Brief summary of the filing",
-  "financials": {
-     "revenue": "$...",
-     "netIncome": "$..."
-  },
-  "keyInitiatives": ["Initiative 1", "Initiative 2", "..."]
-}
+Format the response as **structured readable text** with headings and bullet/numbered lists where suitable, like:
 
-Return ONLY valid JSON. Do NOT include markdown code blocks.
-Escape all quotes and special characters properly.
-Keep "summary" max 100 words, "keyInitiatives" max 5 items.
+**Company:** Intel Corporation  
+**Ticker:** INTC  
+**Form:** 8-K  
+**Filing Date:** 2025-09-05  
+**Summary:**  
+- Intel reported strong quarterly performance...  
+
+**Financial Summary:**  
+1. Revenue: $95.3 billion  
+2. Net Income: $14.8 billion  
+
+**Key Initiatives:**  
+- Expansion into AI and machine learning  
+- Partnership with major cloud providers  
+
+If multiple filings exist, separate each company’s section clearly using a line like:
+---
+Keep text concise and readable. Return plain text only (no JSON, no markdown code block markers like \`\`\`).
 `;
 
-    // Call Azure OpenAI
     const completion = await openaiClient.chat.completions.create({
       model: process.env.AZURE_OPENAI_DEPLOYMENT,
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 2000, // safely increased for batch
-      temperature: 0.2,
+      max_tokens: 2000,
+      temperature: 0.3,
     });
 
-    // Parse JSON response
     let rawContent = completion.choices[0].message.content.trim();
-    rawContent = rawContent.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/```$/, "");
+    rawContent = rawContent
+      .replace(/^```(json|text)?\s*/i, "")
+      .replace(/```$/, "")
+      .trim();
 
-    try {
-      const parsed = JSON.parse(rawContent);
-      allSummaries.push(...parsed);
-    } catch (err) {
-      // fallback: remove trailing commas and try again
-      const cleaned = rawContent.replace(/,\s*]/g, "]").replace(/,\s*}/g, "}");
-      try {
-        const parsed = JSON.parse(cleaned);
-        allSummaries.push(...parsed);
-      } catch (err2) {
-        console.error("Failed to parse AI JSON for this batch:", err2.message);
-      }
-    }
+    allSummaries.push(rawContent);
   }
 
-  return allSummaries;
+  // Combine batches with spacing for better readability
+  return allSummaries.join("\n\n---\n\n");
 }
+
 
 // Smart Query Parser
 async function extractEntitiesFromQuery(query) {

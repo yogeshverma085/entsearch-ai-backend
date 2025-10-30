@@ -4,6 +4,7 @@ import axios from "axios";
 import { AzureOpenAI } from "openai";
 import mammoth from "mammoth";
 import XLSX from "xlsx";
+import cors from "cors";
 
 const pdfModule = await import("pdf-parse");
 const pdf = pdfModule.default || pdfModule;
@@ -11,6 +12,7 @@ const pdf = pdfModule.default || pdfModule;
 dotenv.config();
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 const openaiClient = new AzureOpenAI({
   endpoint: process.env.AZURE_OPENAI_ENDPOINT,
@@ -130,7 +132,7 @@ async function getFileTextContent(driveId, itemId, token, maxChars = null) {
 
 // -------------------- /query endpoint with ranking --------------------
 
-app.post("/query", async (req, res) => {
+app.post("/sharepoint-query", async (req, res) => {
   try {
     const { query } = req.body;
     const token = req.headers.authorization?.split(" ")[1];

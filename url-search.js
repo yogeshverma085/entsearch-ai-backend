@@ -1,13 +1,14 @@
 import dotenv from "dotenv";
-dotenv.config();
-
 import express from "express";
 import axios from "axios";
 import { SearchClient, AzureKeyCredential } from "@azure/search-documents";
 import { AzureOpenAI } from "openai";
+import cors from "cors";
 
+dotenv.config();
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 // 🔹 Azure Cognitive Search client
 const searchClient = new SearchClient(
@@ -50,7 +51,7 @@ async function ensureIndexed(urls) {
 }
 
 // 🔹 Search API endpoint
-app.post("/search", async (req, res) => {
+app.post("/url-search", async (req, res) => {
   try {
     const { query, urls } = req.body;
 

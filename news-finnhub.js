@@ -102,12 +102,12 @@ app.post("/ai-company-news", async (req, res) => {
     const news = newsRes.data.slice(0, 10); // Top 10 news articles
 
     // Step 4️⃣ Summarize using Azure OpenAI
-    const summary = await summarizeNews(company, news);
+    const answer = await summarizeNews(company, news);
 
     res.json({
       company,
       ticker,
-      summary,
+      answer,
       topNews: news.map((n) => ({
         headline: n.headline,
         source: n.source,
@@ -121,5 +121,5 @@ app.post("/ai-company-news", async (req, res) => {
   }
 });
 
-const PORT = 5000;
+const PORT = 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

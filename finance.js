@@ -80,24 +80,67 @@ JSON:
 }
 
 // 🔹 AI summarization for finance data
+// async function summarizeFinanceData(query, financeData) {
+//   const context = financeData
+//     ? `Finance Overview:\n${JSON.stringify(financeData, null, 2)}`
+//     : "No finance data found.";
+
+//   const prompt = `
+// You are a financial analyst AI.
+// Analyze the following financial context and answer the user query clearly.
+
+// User Query: ${query}
+
+// Context:
+// ${context}
+
+// Provide a concise and clear summary including:
+// - Key financial metrics (Revenue, PE Ratio, Market Cap, etc.)
+// - Company performance insights
+// - Investment outlook or potential risks
+// `;
+
+//   const response = await aiClient.chat.completions.create({
+//     messages: [{ role: "user", content: prompt }],
+//     max_tokens: 400,
+//     temperature: 0.3,
+//   });
+
+//   return response.choices?.[0]?.message?.content || "No summary generated.";
+// }
+
+
+// 🔹 AI summarization for finance data (formatted output)
 async function summarizeFinanceData(query, financeData) {
   const context = financeData
     ? `Finance Overview:\n${JSON.stringify(financeData, null, 2)}`
     : "No finance data found.";
 
   const prompt = `
-You are a financial analyst AI.
-Analyze the following financial context and answer the user query clearly.
+You are a professional financial analyst AI. 
+Based on the financial context and the user query, summarize and format the result in this **exact markdown structure**:
+
+**Company:** <company name or N/A>  
+**Ticker:** <ticker or N/A>  
+**Sector:** <sector if available>  
+**Market Cap:** <value if available>  
+**P/E Ratio:** <value if available>  
+**Revenue:** <value if available>  
+**Net Income:** <value if available>  
+**EPS:** <value if available>  
+
+**Financial Summary:**  
+- Provide 2–3 bullet points summarizing key financial performance or trends.
+
+**Insights:**  
+- Provide 2–3 bullet points with investment outlook, opportunities, or risks.
+
+Make sure the response is always markdown formatted.
 
 User Query: ${query}
 
 Context:
 ${context}
-
-Provide a concise and clear summary including:
-- Key financial metrics (Revenue, PE Ratio, Market Cap, etc.)
-- Company performance insights
-- Investment outlook or potential risks
 `;
 
   const response = await aiClient.chat.completions.create({
@@ -106,8 +149,16 @@ Provide a concise and clear summary including:
     temperature: 0.3,
   });
 
-  return response.choices?.[0]?.message?.content || "No summary generated.";
+  // ✅ Handle both Azure and standard OpenAI formats
+  const content =
+    response.choices?.[0]?.message?.content ||
+    response.choices?.[0]?.messages?.[0]?.content?.[0]?.text ||
+    response.choices?.[0]?.content?.[0]?.text ||
+    "No summary generated.";
+
+  return content.trim();
 }
+
 
 // ---------------- API Endpoint ----------------
 app.post("/api/ai-finance", async (req, res) => {
@@ -142,13 +193,13 @@ app.post("/api/ai-finance", async (req, res) => {
     }
 
     // 🧠 Step 4: AI summary
-    const aiSummary = await summarizeFinanceData(query, financeData);
+    const answer = await summarizeFinanceData(query, financeData);
 
     res.json({
       sourceUsed: "finance",
       companyName: companyName || financeData?.Name || null,
       ticker: resolvedTicker,
-      aiSummary,
+      answer,
       financeData: financeData || {},
     });
   } catch (err) {
